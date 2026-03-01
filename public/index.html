@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>SyncWave — Watch Party</title>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --bg1:#FAEDF0;--bg2:#FFF5F7;--pink:#FF4D79;--pink-2:#FF2E63;--muted:#8D99AE;
+      --card: rgba(255,255,255,0.85);--glass-border: rgba(255,255,255,0.5);
+      --max-width:1200px;--radius:24px;
+    }
+    *{box-sizing:border-box;margin:0;padding:0;font-family:'Plus Jakarta Sans',system-ui,-apple-system,Segoe UI,Roboto,'Helvetica Neue',Arial}
+    body{min-height:100vh;display:flex;align-items:center;justify-content:center;background: linear-gradient(135deg, var(--bg1) 0%, var(--bg2) 100%);color:#111;padding:28px;}
+    .blob{position:absolute;filter:blur(80px);z-index:-1;opacity:0.6}
+    .blob-1{width:400px;height:400px;background:#FF4D79;border-radius:50%;top:-120px;left:-120px}
+    .blob-2{width:300px;height:300px;background:#FFB3C6;border-radius:50%;bottom:-80px;right:-80px}
+    .app{width:100%;max-width:var(--max-width);height:85vh;background:var(--card);border-radius:32px;box-shadow:0 20px 60px rgba(20,20,30,0.08);display:grid;grid-template-columns:1fr 360px;overflow:hidden;border:1px solid var(--glass-border);backdrop-filter: blur(12px)}
+    .left{padding:32px;display:flex;flex-direction:column;gap:20px}
+    header{display:flex;align-items:center;justify-content:space-between}
+    .brand{display:flex;gap:12px;align-items:center}
+    .logo{color:var(--pink);font-weight:700;font-size:20px;letter-spacing:-0.5px}
+    .tag{font-size:12px;color:var(--muted)}
+    .top-actions{display:flex;gap:10px;align-items:center}
+    .btn{border:0;padding:10px 16px;border-radius:999px;font-weight:600;cursor:pointer;display:inline-flex;gap:8px;align-items:center;justify-content:center;transition:all .18s ease}
+    .btn.primary{background:var(--pink);color:#fff;box-shadow:0 8px 18px rgba(255,77,121,0.18)}
+    .btn.primary:hover{transform:translateY(-3px);background:var(--pink-2)}
+    .btn.ghost{background:rgba(255,255,255,0.9);color:var(--pink);border:1px solid rgba(255,77,121,0.08)}
+    .room-controls{display:flex;gap:8px;align-items:center}
+    .room-controls input[type="text"]{padding:10px 12px;border-radius:12px;border:1px solid #eee;width:220px;outline:none;background:transparent}
+    .player-wrap{flex:1;display:flex;flex-direction:column;gap:16px}
+    .video-card{background:#000;border-radius:20px;padding:12px;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;box-shadow:0 18px 40px rgba(0,0,0,0.15)}
+    video{width:100%;height:auto;border-radius:12px;display:none;background:#000}
+    .placeholder{color:rgba(255,255,255,0.75);text-align:center;padding:22px}
+    .upload-area{margin-top:12px;display:flex;gap:10px;align-items:center}
+    .file-label{position:relative;display:inline-flex;align-items:center;gap:10px;padding:10px 16px;border-radius:999px;background:var(--pink);color:#fff;cursor:pointer}
+    .file-label input[type="file"]{position:absolute;left:0;top:0;width:100%;height:100%;opacity:0;cursor:pointer}
+    .status-line{color:var(--muted);font-size:13px;margin-left:6px}
+    .right{background: rgba(255,255,255,0.45);border-left:1px solid var(--glass-border);padding:28px;display:flex;flex-direction:column;gap:18px}
+    .room-info h2{font-size:18px;margin-bottom:4px}
+    .room-info p{font-size:13px;color:var(--muted)}
+    .chat{flex:1;background:#fff;padding:14px;border-radius:14px;display:flex;flex-direction:column;gap:12px;box-shadow:0 8px 24px rgba(0,0,0,0.03)}
+    .messages{flex:1;overflow:auto;display:flex;flex-direction:column;gap:10px;padding-right:6px}
+    .msg{background:#F8F9FA;padding:10px 12px;border-radius:12px;max-width:85%;font-size:13px}
+    .msg.mine{background:var(--pink);color:#fff;align-self:flex-end}
+    .chat-input{display:flex;gap:8px;align-items:center}
+    .chat-input input{flex:1;padding:10px;border-radius:999px;border:1px solid #eee;outline:none}
+    .send-btn{width:42px;height:42px;border-radius:50%;background:var(--pink);color:#fff;border:0;cursor:pointer}
+    @media (max-width:980px){.app{grid-template-columns:1fr;height:auto;max-height:none;padding-bottom:40px}.right{order:2}.left{order:1}.video-card{min-height:320px}}
+  </style>
+</head>
+<body>
+  <div class="blob blob-1"></div>
+  <div class="blob blob-2"></div>
+
+  <div class="app" role="application">
+    <div class="left">
+      <header>
+        <div class="brand">
+          <div class="logo">SyncWave.</div>
+          <div class="tag">watch party</div>
+        </div>
+
+        <div class="top-actions">
+          <div class="room-controls">
+            <input id="roomInput" type="text" placeholder="Nome da sala (ex: sala123)" />
+            <button id="createBtn" class="btn primary">Criar sala</button>
+            <button id="joinBtn" class="btn ghost">Entrar</button>
+          </div>
+        </div>
+      </header>
+
+      <div class="player-wrap">
+        <div class="video-card" id="videoCard">
+          <div class="placeholder" id="placeholder">
+            <svg viewBox="0 0 24 24" style="width:56px;height:56px;margin-bottom:10px;opacity:0.9"><path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg>
+            <h3 style="font-size:18px;margin-bottom:6px">Nenhum vídeo em reprodução</h3>
+            <p style="font-size:13px;color:rgba(255,255,255,0.85)">Faça o upload para assistir com seus amigos</p>
+
+            <div class="upload-area">
+              <label class="file-label">Selecionar vídeo
+                <input id="fileInput" type="file" accept="video/mp4,video/*">
+              </label>
+              <button id="uploadBtn" class="btn primary">Enviar</button>
+              <span class="status-line" id="uploadStatus"></span>
+            </div>
+          </div>
+
+          <video id="video" controls playsinline></video>
+        </div>
+
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div style="color:var(--muted);font-size:13px" id="status">Conectando...</div>
+          <div style="color:var(--muted);font-size:13px">Qualidade: original</div>
+        </div>
+      </div>
+    </div>
+
+    <aside class="right">
+      <div class="room-info">
+        <h2 id="roomTitle">Sala</h2>
+        <p id="roomCount">0 pessoas assistindo</p>
+      </div>
+
+      <div class="chat">
+        <div class="messages" id="messages">
+          <div class="msg">Bem-vindo à sala!</div>
+        </div>
+
+        <div class="chat-input">
+          <input id="chatInput" type="text" placeholder="Digite uma mensagem..." />
+          <button id="sendBtn" class="send-btn">▶</button>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    // elements
+    const socket = io();
+    const roomInput = document.getElementById('roomInput');
+    const createBtn = document.getElementById('createBtn');
+    const joinBtn = document.getElementById('joinBtn');
+    const statusEl = document.getElementById('status');
+    const uploadBtn = document.getElementById('uploadBtn');
+    const fileInput = document.getElementById('fileInput');
+    const uploadStatus = document.getElementById('uploadStatus');
+    const video = document.getElementById('video');
+    const placeholder = document.getElementById('placeholder');
+    const roomTitle = document.getElementById('roomTitle');
+    const roomCount = document.getElementById('roomCount');
+    const messages = document.getElementById('messages');
+    const chatInput = document.getElementById('chatInput');
+    const sendBtn = document.getElementById('sendBtn');
+
+    // state
+    let room = '';
+    let isHost = false;
+    let syncing = false;
+    const SEEK_THRESHOLD = 0.6;
+    const DEBOUNCE_MS = 200;
+    let lastEmit = 0;
+    let lastAppliedTs = 0;
+    let nickname = '';
+
+    function nowMs(){ return Date.now(); }
+    function logStatus(t){ statusEl.textContent = t; }
+    function safeEmit(event, payload){
+      const t = nowMs();
+      if (t - lastEmit < DEBOUNCE_MS) return;
+      lastEmit = t;
+      socket.emit(event, payload);
+    }
+
+    // socket handlers
+    socket.on('connect', () => { logStatus('Conectado'); console.log('socket conectado', socket.id); });
+
+    socket.on('video-ready', (src) => { setVideo(src); logStatus('Vídeo disponível'); });
+    socket.on('room-count', n => { roomCount.textContent = (n || 0) + ' pessoas assistindo'; });
+    socket.on('chat-history', hist => { messages.innerHTML=''; if (Array.isArray(hist)) hist.forEach(m=> appendMessage(m)); });
+    socket.on('chat-message', msg => appendMessage(msg));
+    socket.on('chat-cleared', ()=> messages.innerHTML='');
+    socket.on('chat-error', e => alert(e?.error || 'Erro no chat'));
+
+    socket.on('sync', (payload) => {
+      if (!payload || typeof payload.ts !== 'number') return;
+      if (payload.ts <= lastAppliedTs) return;
+      lastAppliedTs = payload.ts;
+      syncing = true;
+      try {
+        if (Math.abs(video.currentTime - payload.time) > SEEK_THRESHOLD) {
+          try { video.currentTime = payload.time; } catch(e){}
+        }
+        if (payload.playing) {
+          const p = video.play();
+          if (p && p.then) p.then(()=> syncing=false).catch(()=> syncing=false);
+          else syncing=false;
+        } else {
+          try { video.pause(); } catch(e){}
+          syncing=false;
+        }
+      } catch(e) { console.error(e); syncing=false; }
+    });
+
+    // UI actions
+    createBtn.addEventListener('click', () => {
+      const r = roomInput.value.trim(); if (!r) return alert('Digite o nome da sala');
+      room = r; isHost = true; askNick();
+      socket.emit('create-room', room);
+      uploadAreaShow(true); roomTitle.textContent = 'Sala ' + room; logStatus('Você é host — envie o vídeo');
+    });
+
+    joinBtn.addEventListener('click', () => {
+      const r = roomInput.value.trim(); if (!r) return alert('Digite o nome da sala');
+      room = r; isHost = false; askNick();
+      socket.emit('join-room', room);
+      uploadAreaShow(false); roomTitle.textContent = 'Sala ' + room; logStatus('Entrou na sala — aguardando vídeo');
+    });
+
+    function uploadAreaShow(show){ const ua = document.querySelector('.upload-area'); if(ua) ua.style.display = show ? 'flex' : 'none'; }
+    uploadAreaShow(false);
+
+    function setVideo(src){
+      if(!src) return;
+      video.src = src; video.style.display = 'block'; placeholder.style.display = 'none'; video.load();
+    }
+
+    // upload logic
+    uploadBtn.addEventListener('click', async () => {
+      const f = fileInput.files[0]; if (!f) return alert('Escolha um arquivo');
+      if (!room) return alert('Crie a sala primeiro');
+      uploadStatus.textContent = 'Enviando...';
+      const fd = new FormData(); fd.append('video', f); fd.append('room', room);
+      try {
+        let res = await fetch(`/upload/${encodeURIComponent(room)}`, { method:'POST', body: fd });
+        if (!res.ok) { console.warn('/upload/:room falhou', res.status); res = await fetch('/upload', { method:'POST', body: fd }); }
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const json = await res.json();
+        if (json && json.video) { uploadStatus.textContent = 'Upload concluído'; setVideo(json.video); logStatus('Upload OK — vídeo disponível'); } 
+        else throw new Error('Resposta inválida');
+      } catch (err) { console.error('Erro upload', err); uploadStatus.textContent = 'Erro no upload'; alert('Erro no upload: ' + (err.message || err)); }
+    });
+
+    // control sending
+    function sendControl(playing){ if (!room) return; if (syncing) return; const payload = { room, time: video.currentTime, playing: !!playing }; safeEmit('control', payload); }
+    video.addEventListener('play', ()=> sendControl(true));
+    video.addEventListener('pause', ()=> sendControl(false));
+    video.addEventListener('seeked', ()=> sendControl(!video.paused));
+
+    // chat UI
+    function escapeHtml(s){ if (!s) return ''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+    function formatTime(ts){ const d = new Date(ts); return d.toLocaleTimeString(); }
+    function appendMessage(msg){
+      const el = document.createElement('div'); el.className = 'msg' + (msg.user === nickname ? ' mine' : '');
+      el.innerHTML = `<strong style="font-size:12px">${escapeHtml(msg.user)}</strong><div style="margin-top:6px">${escapeHtml(msg.text)}</div><div style="font-size:11px;color:#999;margin-top:6px">${formatTime(msg.ts)}</div>`;
+      messages.appendChild(el); messages.scrollTop = messages.scrollHeight;
+    }
+
+    function askNick(){ const n = prompt('Como quer ser chamado?', '') || ''; nickname = n ? n.slice(0,40) : ('Guest' + Math.floor(Math.random()*9000+1000)); }
+
+    sendBtn.addEventListener('click', sendChat);
+    chatInput.addEventListener('keypress', (e)=> { if (e.key === 'Enter') { e.preventDefault(); sendChat(); } });
+
+    function sendChat(){
+      const txt = chatInput.value.trim(); if (!txt) return; if (!room) return alert('Entre em uma sala primeiro');
+      socket.emit('chat-message', { room, user: nickname || 'Guest', text: txt });
+      chatInput.value='';
+    }
+
+    console.log('Frontend pronto');
+  </script>
+</body>
+</html>
